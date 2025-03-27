@@ -1,0 +1,90 @@
+.login-container {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 32px;
+  background-color: var(--bg-secondary);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.login-container h2 {
+  margin-bottom: 24px;
+  text-align: center;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.login-form input::placeholder {
+  color: var(--text-secondary);
+}
+
+.login-form button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #0095ff;
+  color: white;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-form button:hover {
+  background-color: #0077cc;
+}
+
+.form-helpers {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.form-helpers a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.form-helpers a:hover {
+  color: var(--text-primary);
+}
+
+.create-account {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.85rem;
+}
+
+.create-account a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.create-account a:hover {
+  color: var(--text-primary);
+}
+
+.error-message {
+  color: var(--danger-color);
+  font-size: 14px;
+  margin-top: 8px;
+} 

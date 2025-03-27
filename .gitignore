@@ -1,0 +1,6 @@
+test/
+.venv/
+imp/
+__pycache__/
+Tanish.json
+Tanish.obj

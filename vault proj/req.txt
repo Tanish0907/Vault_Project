@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+cryptography
+matplotlib
+python-multipart
+requests

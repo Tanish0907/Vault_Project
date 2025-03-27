@@ -1,0 +1,73 @@
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b3b3b3;
+  --accent-color: #0d99ff;
+  --danger-color: #ff4d4d;
+  --success-color: #00cc66;
+  --border-radius: 12px;
+  --input-radius: 8px;
+  
+  --transition: all 0.2s ease-in-out;
+}
+
+/* Global styles */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.btn {
+  border-radius: var(--input-radius);
+  padding: 8px 16px;
+  border: none;
+  transition: var(--transition);
+  font-weight: 500;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.btn-primary:hover {
+  background-color: #0b86e3;
+  transform: translateY(-1px);
+}
+
+/* Modal styles */
+.modal-content {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--bg-tertiary);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--bg-tertiary);
+}
+
+/* Form inputs */
+input[type="text"],
+input[type="password"] {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--bg-tertiary);
+  border-radius: var(--input-radius);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  margin: 8px 0;
+  width: 100%;
+  transition: var(--transition);
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(13, 153, 255, 0.2);
+} 

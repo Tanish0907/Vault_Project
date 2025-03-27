@@ -1,0 +1,569 @@
+front end 
+app.jsx:
+mport React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import './styles.css';
+import Gallery from './Gallery';
+import LogIn from './login';
+
+function App() {
+  const [imageList, setImageList] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleLogin = (data) => {
+    setImageList(data);
+    setIsAuthenticated(true);
+  };
+
+  return (
+    <Router>
+      <Routes>
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/gallery" /> : <LogIn handleLogin={handleLogin} />}
+        />
+        <Route
+          path="/gallery"
+          element={isAuthenticated ? <Gallery imageList={imageList} /> : <Navigate to="/login" />}
+        />
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/gallery" : "/login"} />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
+gallery.jsx:
+import React, { useState } from 'react';
+import LightGallery from 'lightgallery/react';
+import 'lightgallery/css/lightgallery.css';
+import 'lightgallery/css/lg-thumbnail.css';
+import 'lightgallery/css/lg-autoplay.css';
+import 'lightgallery/css/lg-fullscreen.css';
+import 'lightgallery/css/lg-rotate.css';
+import lgThumbnail from 'lightgallery/plugins/thumbnail';
+import lgAutoplay from 'lightgallery/plugins/autoplay';
+import lgFullscreen from 'lightgallery/plugins/fullscreen';
+import lgRotate from 'lightgallery/plugins/rotate';
+import axios from 'axios';
+
+export const Gallery = ({ imageList }) => {
+  const [images, setImages] = useState(imageList);
+
+  const onInit = () => {
+    console.log('lightGallery has been initialized');
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post('http://localhost:8000/uploadFile/', formData, {
+        withCredentials: true // Automatically send cookies for authentication
+      });
+
+      // Assuming backend returns the uploaded thumbnail as a base64 image string
+      const newThumbnail = {
+        src: `data:image/jpg;base64,${response.data}`, // Backend should return base64 thumbnail
+        alt: file.name
+      };
+
+      setImages((prevImages) => [...prevImages, newThumbnail]);
+    } catch (error) {
+      console.error('File upload failed:', error);
+    }
+  };
+
+  return (
+    <div className="App">
+      <h1>Gallery</h1>
+      
+      <input type="file" accept="image/*" onChange={handleFileChange} />
+
+      <LightGallery onInit={onInit} speed={500} plugins={[lgThumbnail, lgAutoplay, lgFullscreen, lgRotate]} download={false}>
+        {images.map((image, index) => (
+          <a href={image.src} key={index}>
+            <img
+              alt={image.alt}
+              src={image.src}
+              onContextMenu={(e) => e.preventDefault()}
+              draggable="false"
+            />
+          </a>
+        ))}
+      </LightGallery>
+    </div>
+  );
+};
+
+export default Gallery;
+login.jsx:
+import React, { useState } from 'react';
+import axios from 'axios';
+import Button from 'react-bootstrap/Button';
+
+export const LogIn = ({ handleLogin }) => {
+  const [username, setUsername] = useState('');
+  const [authToken, setAuthToken] = useState('');
+
+  const handleLoginClick = async () => {
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/login',
+        { uname: username, auth_token: authToken },
+        { withCredentials: true }
+      );
+
+      const thumbnails = response.data.thumbnail.map((base64String, index) => ({
+        id: index,
+        src: `data:image/jpg;base64,${base64String}`,
+        alt: `Image ${index}`
+      }));
+
+      handleLogin(thumbnails);  // Pass the image data to App component
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Invalid credentials. Please try again.');
+    }
+  };
+
+  return (
+    <div>
+      <h2>Login</h2>
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Auth Token"
+        value={authToken}
+        onChange={(e) => setAuthToken(e.target.value)}
+      />
+      <Button onClick={handleLoginClick}>Login</Button>
+    </div>
+  );
+};
+
+export default LogIn;
+
+back end 
+api.py:
+from json import load
+from fastapi import FastAPI, File,UploadFile
+from fastapi.responses import JSONResponse
+from Vault import block_chain
+from fastapi.middleware.cors import CORSMiddleware
+from user_auth import User
+import os
+import pickle 
+from PIL import Image, ImageFilter
+import base64
+from pydantic import BaseModel
+#global chain
+#chain=block_chain("123","logs.json")
+class log_info(BaseModel):
+    uname:str
+    auth_token:str
+
+app=FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this according to your needs. "" allows all origins.
+    allow_credentials=True,
+    allow_methods=["*"],  # Adjust the allowed methods as needed.
+    allow_headers=["*"],  # Adjust the allowed headers as needed.
+)
+
+
+@app.get("/")
+def test():
+    return "api is up"
+def create_thumbnail(file:str):
+    with open(file,"rb") as f:
+        binary=f.read()
+    base64_string = base64.b64encode(binary)
+    return base64_string
+
+@app.post("/register/uname")
+def register(uname:str):
+    user=User(uname)
+    user.save()
+    return {"token":user.chain_obj.chain_tocken}
+
+@app.post("/login")
+def login(log_info:log_info):
+    info=dict(log_info)
+    user = User(info["uname"], info["auth_token"])
+    
+    # Assuming the User class will raise an error if authentication fails
+    uname = str(user.uname)
+    
+    # Create a thumbnail response as a base64-encoded string
+    thumbnail = [thumb.decode("utf-8") if isinstance(thumb, bytes) else thumb for thumb in user.thumbnail]
+    
+    # Create the content for the JSON response
+    content = {
+        "uname": uname,
+        "thumbnail": thumbnail
+    }
+    
+    # Use JSONResponse to return a response with JSON data
+    response = JSONResponse(content=content)
+    
+    # Set a cookie in the response, with the token or session information
+    response.set_cookie(
+        key="id",          # The cookie key name
+        value=info["auth_token"],  # You can set a real session value here
+        httponly=True,             # Makes the cookie HTTP-only
+        max_age=86400,             # 1 day expiry
+        samesite="Lax",            # Adjust the SameSite attribute (Lax/Strict/None) based on your need
+        secure=True                # True if you're serving over HTTPS, False for local development
+    )
+    
+    return response
+
+@app.post("/uploadFile/")
+async def create_upload_file(file: UploadFile,enc_tocken:str,uname:str,auth_token:str):
+    user=User(uname,auth_token)
+    extension=file.content_type.split("/")[-1]
+    with open (f"./temp.{extension}","xb") as temp:
+        temp.write(file.file.read())
+        temp.close()
+        user.chain_obj.create_chain(enc_tocken,[f"./temp.{extension}"])
+        
+    user.thumbnail.append(create_thumbnail(f"./temp.{extension}"))
+    print(user.thumbnail)
+    user.save()
+    os.remove(f"./temp.{extension}")
+    return "file uploaded"
+@app.get("/file/{idx}")
+def get_img(idx:int,k:str,uname:str,auth_token:str):
+    idx=idx-1
+    user=User(uname,auth_token)
+    return user.chain_obj.return_img_str(idx,k)
+@app.get("/file")
+def get_files(uname:str,auth_token:str):
+    user=User(uname,auth_token)
+    return({"number":user.no_of_files(),"thumbnails":user.thumbnail})
+
+user_auth.py:
+import pickle
+import os
+from Vault import random_key_gen,block_chain
+from ipfs import IPFS
+class User:
+    def __init__(self,uname:str,auth_tocken:str=''):
+        if os.path.exists(f"./{uname}.obj"):
+            self.load_user(uname,auth_tocken)
+        else:
+            self.uname=uname
+            self.thumbnail=[]
+            auth_tocken=random_key_gen()
+            self.chain_obj=block_chain(auth_tocken,f"{uname}.json")
+
+    def auth(self,auth_tocken:str):
+        if self.chain_obj.chain_tocken==auth_tocken:
+            return True
+        else:
+            return False
+
+    def save(self):
+        try:
+            file=open(f"./{self.uname}.obj","x")
+        except:
+            pass
+
+        with open(f"./{self.uname}.obj","wb" ) as file:
+            print(self.chain_obj.chain_tocken)
+            pickle.dump(self,file)
+
+    def load_user(self,uname:str,auth_tocken:str):
+        with open(f"./{uname}.obj","rb") as file:
+            user=pickle.load(file)
+        if user.auth(auth_tocken):
+            #print("y??")
+            self.uname=user.uname
+            self.thumbnail=user.thumbnail
+            self.chain_obj=user.chain_obj
+            self.chain_obj.load()
+            return {"uname":user.uname,"thumbnails":list(user.thumbnail)}
+        else:
+            #print("yep>:")
+            return "null"
+    def no_of_files(self):
+        return len(self.chain_obj.chain)
+
+vault.py:
+from sys import exception
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.backends import default_backend
+import binascii
+import os
+import hashlib
+import random
+import json
+from PIL import Image
+from io import BytesIO
+import matplotlib.pyplot as plt
+import base64
+from ipfs import IPFS
+global storage
+storage=IPFS("http://192.168.122.35:5001")
+def key_gen(seed):
+    seed=bytes(seed,"utf-8")
+    seed_hash=hashlib.sha256()
+    seed_hash.update(seed)
+    return str(seed_hash.hexdigest())
+def random_key_gen():
+    char_lst=["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","1","2","3","4","5","6","7","8","9","0","!","@","#","$","%","^","&","*"]
+    seed=""
+    min_len=8
+    max_len=10
+    rnd_len=random.randint(min_len,max_len)
+    for i in range(rnd_len):
+        rand_char=char_lst[random.randint(0,i)]
+        seed=seed+rand_char
+    seed=key_gen(seed)
+    return seed
+def decrypt_file(input_file, seed_token):
+    # Generate a key from the seed token
+    key = seed_token.ljust(32)[:32].encode('utf-8')  # Ensure key is 32 bytes long
+
+    # Read the hex data from the input file
+    hex_data =input_file 
+
+    # Convert the hex data back to binary
+    encrypted_data_with_iv = binascii.unhexlify(hex_data)
+
+    # Extract the IV and the encrypted data
+    iv = encrypted_data_with_iv[:16]
+    encrypted_data = encrypted_data_with_iv[16:]
+
+    # Create a cipher object
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+
+    # Decrypt the data
+    padded_data = decryptor.update(encrypted_data) + decryptor.finalize()
+
+    # Unpad the data
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    data = unpadder.update(padded_data) + unpadder.finalize()
+    print(f"Decrypted data")
+    return data    
+    
+def encrypt(input_file,seed_token):
+    # Generate a key from the seed token
+    key = seed_token.ljust(32)[:32].encode('utf-8')  # Ensure key is 32 bytes long
+    iv = os.urandom(16)  # Initialization vector
+
+    # Create a cipher object
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+
+    # Read the binary file
+    data = input_file
+
+    # Pad the data to make it a multiple of the block size
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(data) + padder.finalize()
+
+    # Encrypt the data
+    encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
+
+    # Convert to hex
+    hex_data = binascii.hexlify(iv + encrypted_data).decode('utf-8')
+    
+    return hex_data
+
+def divide_file(path:str,parts:int)->list:
+    file=[]
+    chunk_size=int(int(os.path.getsize(path))/parts)
+    CHUNK_SIZE = chunk_size  # in bytes
+    with open(path, 'rb') as f:  # open in binary read mode
+        chunk = f.read(CHUNK_SIZE)
+        while chunk:
+            file.append(chunk) 
+            chunk = f.read(CHUNK_SIZE)
+    return file
+
+class block:
+    def __init__(self,block_hash:str=None,prev_hash:str=None,data:str=None,thumbnail:str=None) ->None:
+        self.hash=block_hash
+        self.prev_hash=prev_hash
+        self.data=data
+
+class block_chain:
+    def __init__(self,chain_tocken:str,file:str):
+        self.file=file
+        self.chain_tocken=chain_tocken
+        self.chain=[]
+        lf=open(f"./{file}","x")
+        with open(f"./{file}","r") as lf:
+            lf=lf.readlines()
+            
+        if not lf:
+            with open(f"./{file}","w") as f:
+                lst=[]
+                json.dump(lst,f)
+                f.close()
+        else:
+            self.load()
+            self.validate_chain()
+
+    def create_chain(self,enc_tocken:str,files:list)->None:
+
+        enc_tocken=key_gen(enc_tocken)
+        self.file_list=files
+        for i in files:
+            self.chain.append([])
+        print("chain initaiaized")
+        for i in files:
+            file_idx=files.index(i)
+            file=divide_file(i,5)
+            file_chain=[]
+            for x in file:   
+                block=self.create_block(x,enc_tocken)
+                file_chain.append(block)
+                for block_idx in range(len(file_chain)):
+                    #try:
+                        #file_chain[block_idx].next_block=file_chain[block_idx+1]
+                    #except IndexError as e:
+                        #pass
+                    try:
+                        #file_chain[block_idx].prev_block=file_chain[block_idx-1]
+                        file_chain[block_idx].prev_hash=file_chain[block_idx-1].hash
+                    except IndexError as e:
+                        pass
+            self.chain[file_idx]=file_chain
+            print(f"appended {i} to chain")
+        self.save()
+        self.load()
+        self.validate_chain()
+    #debug
+    '''
+        for i in self.chain[0]:
+            print(f"###########################{self.chain[0].index(i)}###############################")
+            #print(f"data:{i.data}")
+            print(f"prev_hash:{i.prev_hash}")
+            print(f"block_hash:{i.block_hash}")
+    '''
+
+
+    def create_block(self,file_chunk:bytes,enc_tocken:str):
+        new_block=block()
+        data=encrypt(file_chunk,enc_tocken)
+        with open("./temp.txt","x") as file:
+            file.write(data)
+        id_hash=storage.upload_ipfs("./temp.txt")
+        os.remove("./temp.txt")
+        new_block.data=id_hash
+        new_block.hash=key_gen(new_block.data)
+        return new_block
+    
+    def validate_block(self,blk:dict)->bool:
+        if key_gen(blk["data"]) == blk["hash"] :
+            return True
+        return False
+    def validate_chain(self):
+        for i in self.chain:
+            for block_idx in range(len(i)):
+                if self.validate_block(i[block_idx]) and i[block_idx]["prev_hash"]==i[block_idx-1]["hash"]:
+                    continue
+                else:
+                    print("chain not valid")
+                    return False
+        print("chain is valid")
+        return True
+
+
+    def save(self):        
+        with open(f"./{self.file}","r") as file:
+            logs=json.load(file)
+            file.close()
+            for i in range(len(self.chain)):
+                file_data=[]
+                for block in self.chain[i]:
+                    try:
+                        block_data={}
+                        block_data["hash"]=block.hash
+                        block_data["prev_hash"]=block.prev_hash
+                        block_data["data"]=block.data
+                    except Exception as e:
+                        block_data={}
+                        block_data["hash"]=block["hash"]
+                        block_data["prev_hash"]=block["prev_hash"]
+                        block_data["data"]=block["data"]
+                    file_data.append(block_data)
+                if file_data not in logs:
+                    logs.append(file_data)
+
+        with open(f"./{self.file}","w") as file:
+            json.dump(logs, file, indent=4)
+
+
+    
+    def load(self):
+        with open(f"./{self.file}","r") as file:
+            logs=json.load(file)
+            self.chain=logs
+            for i in self.chain:
+                if len(i)==0:
+                    self.chain.pop(self.chain.index(i))
+            file.close()
+
+    def open_file(self,file_idx:int,enc_tocken:str):
+        img_data=b''
+        key=key_gen(enc_tocken)
+        file=self.chain[file_idx]
+        for i in file:
+            img_data=img_data+decrypt_file(i["data"],key)
+            #print("prev:",i["prev_hash"],"\n","hash:",i["hash"])
+        img=Image.open(BytesIO(img_data))
+        plt.imshow(img)
+        plt.show()
+
+    def return_img_str(self,file_idx:int,enc_tocken:str):
+        img_data=b''
+        key=key_gen(enc_tocken)
+        file=self.chain[file_idx]
+        for i in file:
+            byt_data=storage.get_ipfs(i["data"])
+            img_data=img_data+decrypt_file(byt_data,key)
+            #print("prev:",i["prev_hash"],"\n","hash:",i["hash"])
+        #image_string = base64.b64encode(img_data)
+        img_data=base64.b64encode(img_data).decode("utf-8")
+        return {"img":img_data}
+    
+
+
+    def test(self):
+        for i in self.chain:
+            print(len(i))
+            for x in i:
+                print(x["hash"])
+
+          
+
+'''           
+if __name__=="__main__":
+   file_lst=os.listdir("./imp")
+   files=[]
+   for i in range(len(file_lst)):
+       files.append(f"./imp/{file_lst[i]}")
+   chain=block_chain()
+   chain.create_chain("1234",files)
+   chain.open_file(1,"1234")
+    
+
+ '''

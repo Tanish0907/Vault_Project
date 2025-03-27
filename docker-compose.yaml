@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./Pixel Lock  # Path to your React app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"  # Map port 3000 on the host to port 80 in the container
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./vault proj  # Path to your FastAPI app
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # Map port 8000 on the host to port 8000 in the container
+    volumes:
+      - ./vault proj:/app  # Mount the local directory to the container for live updates
+    environment:
+      - IPFS_API_URL=http://ipfs:5001  # Set the IPFS API URL for the backend
+
+  ipfs:
+    image: ipfs/kubo:latest  # Use the latest IPFS Kubo image
+    ports:
+      - "10002:5001"  # Map port 5001 for the IPFS API
+      - "9080:8080"  # Map port 8080 for the IPFS gateway
+    volumes:
+      - ./ipfs:/data/ipfs  # Persist IPFS data
+ # Define a volume for IPFS data
