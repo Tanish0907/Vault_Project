@@ -15,7 +15,7 @@ export const Register = () => {
     
     try {
       const response = await axios.post(
-        'http://localhost:8000/register/uname',
+        'http://localhost:10001/register/uname',
         { uname: username }
       );
 

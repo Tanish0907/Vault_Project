@@ -58,7 +58,7 @@ export const Gallery = ({ imageList }) => {
 
     try {
       const response = await axios.post(
-        'http://localhost:8000/uploadFile/', 
+        'http://localhost:10001/uploadFile/', 
         formData, 
         {
           headers: {
@@ -90,7 +90,7 @@ export const Gallery = ({ imageList }) => {
 
     setLoading(true);
     try {
-      const response = await axios.get(`http://localhost:8000/file/${selectedImageIndex}`, {
+      const response = await axios.get(`http://localhost:10001/file/${selectedImageIndex}`, {
         params: { k: encToken, uname: username, auth_token: authToken }
       });
 

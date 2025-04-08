@@ -15,7 +15,7 @@ export const LogIn = ({ handleLogin }) => {
     
     try {
       const response = await axios.post(
-        'http://localhost:8000/login',
+        'http://localhost:10001/login',
         { uname: username, auth_token: authToken },
         { withCredentials: true }
       );
