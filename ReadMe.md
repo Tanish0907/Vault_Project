@@ -116,7 +116,7 @@ The backend API is built using FastAPI and provides the following key paths:
    - Navigate to the project directory.
    - Run the following command to start all services:
      ```bash
-     docker-compose up --build
+     docker-compose up 
      ```
    - Access the services:
      - Frontend: [http://localhost:4000](http://localhost:4000)
